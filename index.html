@@ -207,12 +207,14 @@
         </div>
         
         <!-- Lobby/Keyword Selection Screen (for Student) -->
+        
+<!-- Lobby/Keyword Selection Screen (for Student) -->
         <div id="keyword-selection-screen" class="hidden bg-white p-8 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold">เลือกคีย์เวิร์ดสำหรับบิงโกของคุณ</h2>
-            <p class="text-slate-600 mb-4">เลือกคำที่คุณต้องการทั้งหมด 24 คำ (จะมีช่อง "ฟรี" ให้ตรงกลาง) จากนั้นกดปุ่ม "สร้างการ์ดบิงโก"</p>
-            <p class="font-bold text-xl mb-4">เลือกแล้ว <span id="selected-keyword-count">0</span>/24 คำ</p>
-            <div id="keyword-selection-grid" class="p-4 bg-slate-50 rounded-lg max-h-60 overflow-y-auto mb-4 border"></div>
-             <div class="mt-6">
+            <h2 class="text-2xl font-bold">กรอกคำศัพท์ของคุณเอง</h2>
+            <p class="text-slate-600 mb-4">กรอกคำศัพท์ที่ต้องการใช้ในบิงโก 24 คำ (1 คำต่อ 1 บรรทัด) แล้วกด "สร้างการ์ดบิงโก"</p>
+            <textarea id="student-keywords-input" class="w-full h-48 p-3 border rounded-lg focus:ring-2 focus:ring-indigo-400 mb-2" placeholder="คำที่ 1&#10;คำที่ 2&#10;คำที่ 3..."></textarea>
+            <p class="font-bold text-xl mb-4">กรอกแล้ว <span id="student-keyword-count">0</span>/24 คำ</p>
+            <div class="mt-6">
                 <h3 class="font-bold mb-2">ผู้เล่นในห้อง</h3>
                 <ul id="lobby-player-list" class="list-disc list-inside text-slate-600"></ul>
             </div>
@@ -737,43 +739,28 @@
             });
         };
         
+        // ...existing code...
         const setupKeywordSelectionScreen = () => {
             showScreen('keywordSelection');
-            const selectionGrid = document.getElementById('keyword-selection-grid');
-            const selectedCountSpan = document.getElementById('selected-keyword-count');
+            const textarea = document.getElementById('student-keywords-input');
+            const countSpan = document.getElementById('student-keyword-count');
             const createCardBtn = document.getElementById('create-bingo-card-btn');
-            
-            onValue(ref(db, `games/${currentGameCode}/keywords`), (snapshot) => {
-                const keywords = snapshot.val() || [];
-                selectionGrid.innerHTML = '';
-                let selectedKeywords = new Set();
+            textarea.value = '';
+            countSpan.textContent = '0';
+            createCardBtn.disabled = true;
 
-                keywords.forEach(keyword => {
-                    const chip = document.createElement('div');
-                    chip.textContent = keyword;
-                    chip.className = 'keyword-chip';
-                    chip.onclick = () => {
-                        if (selectedKeywords.has(keyword)) {
-                            selectedKeywords.delete(keyword);
-                            chip.classList.remove('selected');
-                        } else {
-                            if (selectedKeywords.size < 24) {
-                                selectedKeywords.add(keyword);
-                                chip.classList.add('selected');
-                            }
-                        }
-                        selectedCountSpan.textContent = selectedKeywords.size;
-                        createCardBtn.disabled = selectedKeywords.size !== 24;
-                    };
-                    selectionGrid.appendChild(chip);
-                });
-            }, { onlyOnce: true });
+            textarea.oninput = () => {
+                const keywords = textarea.value.trim().split('\n').filter(k => k.trim() !== '');
+                countSpan.textContent = keywords.length;
+                createCardBtn.disabled = keywords.length !== 24;
+            };
 
             createCardBtn.onclick = async () => {
-                let cardKeywords = Array.from(selectionGrid.querySelectorAll('.keyword-chip.selected')).map(c => c.textContent);
-                cardKeywords = cardKeywords.sort(() => Math.random() - 0.5); 
-                cardKeywords.splice(12, 0, FREE_SPACE_KEYWORD); 
-                
+                let cardKeywords = textarea.value.trim().split('\n').filter(k => k.trim() !== '');
+                if (cardKeywords.length !== 24) return;
+                cardKeywords = cardKeywords.sort(() => Math.random() - 0.5);
+                cardKeywords.splice(12, 0, FREE_SPACE_KEYWORD);
+
                 const uid = auth.currentUser.uid;
                 const updates = {};
                 updates[`/games/${currentGameCode}/players/${uid}/card`] = cardKeywords;
@@ -781,6 +768,7 @@
                 await update(ref(db), updates);
             };
         };
+        // ...existing code...
 
         const setupGameScreen = (isTeacher, playerName) => {
             showScreen('game');
